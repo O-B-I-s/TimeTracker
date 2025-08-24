@@ -5,62 +5,67 @@ namespace WebApi.Services
 {
     public class ExcelExporter
     {
-        public byte[] Generate(IEnumerable<TimesheetEntry> entries, DateOnly weekStart)
+        private readonly IWebHostEnvironment _env;
+        private readonly ILogger<ExcelExporter> _logger;
+
+        public ExcelExporter(IWebHostEnvironment env, ILogger<ExcelExporter> logger)
         {
-            using var wb = new XLWorkbook();
-            var ws = wb.Worksheets.Add("Timesheet");
+            _env = env;
+            _logger = logger;
+        }
 
+        public byte[] Generate(IEnumerable<TimesheetEntry> entries, DateOnly weekStart, string employeeName, string employeeId, string location, string department)
+        {
+            // Load the template
+            var templatePath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, "templates", "TimesheetTemplate.xlsx");
 
-            // Headers
-            ws.Cell("A1").Value = "DAY";
-            ws.Cell("B1").Value = "DATE";
-            ws.Cell("C1").Value = "START";
-            ws.Cell("D1").Value = "END";
-            ws.Cell("E1").Value = "HOURS";
-            ws.Cell("F1").Value = "ODO START";
-            ws.Cell("G1").Value = "ODO END";
-            ws.Cell("H1").Value = "KM";
+            if (!File.Exists(templatePath))
+            {
+                _logger.LogError("Template not found at {Path}", templatePath);
+                throw new FileNotFoundException("Excel template not found", templatePath);
+            }
 
+            using var wb = new XLWorkbook(templatePath);
+            var ws = wb.Worksheet(1); // First worksheet
 
+            // Fill employee info
+            ws.Cell("B3").Value = employeeName;     // NAME (B3)
+            ws.Cell("F3").Value = location;         // LOCATION (F3)
+            ws.Cell("B4").Value = employeeId;       // EMPLOYEE ID# (B4)
+            ws.Cell("F4").Value = department;       // DEPARTMENT (F4)
+
+            // Map entries by date for quick lookup
             var byDate = entries.ToDictionary(e => e.Date, e => e);
-            int row = 2;
+
+            // Fill time entries - starting at row 8 based on template
+            int row = 8; // Sunday row
             for (int i = 0; i < 7; i++)
             {
-                var d = weekStart.AddDays(i);
-                byDate.TryGetValue(d, out var e);
+                var date = weekStart.AddDays(i);
 
+                // Fill date column (B)
+                ws.Cell(row, 2).Value = date.ToDateTime(TimeOnly.MinValue);
+                ws.Cell(row, 2).Style.DateFormat.Format = "MMMM d, yyyy";
 
-                ws.Cell(row, 1).Value = d.ToDateTime(TimeOnly.MinValue).ToString("dddd");
-                ws.Cell(row, 2).Value = d.ToDateTime(TimeOnly.MinValue).ToString("MMM dd, yyyy");
-
-
-                // Write real Excel times
-                if (e is not null)
+                if (byDate.TryGetValue(date, out var entry))
                 {
-                    ws.Cell(row, 3).Value = e.StartTime.ToTimeSpan();
-                    ws.Cell(row, 4).Value = e.EndTime.ToTimeSpan();
-                    ws.Cell(row, 6).Value = e.OdometerStart;
-                    ws.Cell(row, 7).Value = e.OdometerEnd;
+                    // Fill time data
+                    ws.Cell(row, 3).Value = entry.StartTime.ToTimeSpan().TotalDays;  // START (C)
+                    ws.Cell(row, 4).Value = entry.EndTime.ToTimeSpan().TotalDays;    // FINISH (D)
+                    ws.Cell(row, 3).Style.NumberFormat.Format = "h:mm";
+                    ws.Cell(row, 4).Style.NumberFormat.Format = "h:mm";
+
+                    // Fill odometer data
+                    if (entry.OdometerStart.HasValue)
+                        ws.Cell(row, 6).Value = entry.OdometerStart.Value;  // ODOMETER START (F)
+                    if (entry.OdometerEnd.HasValue)
+                        ws.Cell(row, 7).Value = entry.OdometerEnd.Value;    // ODOMETER FINISH (G)
                 }
-                ws.Cell(row, 3).Style.NumberFormat.Format = "hh:mm";
-                ws.Cell(row, 4).Style.NumberFormat.Format = "hh:mm";
 
-
-                // Formulas
-                ws.Cell(row, 5).FormulaA1 = $"=IF(AND(C{row}>0,D{row}>0),(D{row}-C{row})*24,0)"; // hours
-                ws.Cell(row, 8).FormulaA1 = $"=IF(AND(G{row}>0,F{row}>0),G{row}-F{row},0)"; // km
                 row++;
             }
 
-
-            // Totals
-            ws.Cell(row, 4).Value = "TOTALS";
-            ws.Cell(row, 5).FormulaA1 = $"=SUM(E2:E{row - 1})";
-            ws.Cell(row, 8).FormulaA1 = $"=SUM(H2:H{row - 1})";
-            ws.Range($"A1:H1").Style.Font.SetBold();
-            ws.Columns().AdjustToContents();
-
-
+            // Save to memory stream
             using var ms = new MemoryStream();
             wb.SaveAs(ms);
             return ms.ToArray();

@@ -94,9 +94,9 @@ namespace WebApi.Controllers
             return NoContent();
         }
 
-        // GET: api/timeentries/export/2025-08-18
+        // GET: api/timeentries/export/2025-08-18?name=Johnson%20Obioma&employeeId=81235493&location=CALGARY%20-%201410%20COST%3A270%20GL%3A13000&department=MERCH
         [HttpGet("export/{weekStart}")]
-        public async Task<IActionResult> ExportToExcel(DateOnly weekStart)
+        public async Task<IActionResult> ExportToExcel(DateOnly weekStart, [FromQuery] string name, [FromQuery] string employeeId, [FromQuery] string location, [FromQuery] string department)
         {
             var weekEnd = weekStart.AddDays(7);
             var entries = await _context.TimesheetEntries
@@ -104,7 +104,7 @@ namespace WebApi.Controllers
                                         .OrderBy(e => e.Date)
                                         .ToListAsync();
 
-            var bytes = _excelService.Generate(entries, weekStart);
+            var bytes = _excelService.Generate(entries, weekStart, name, employeeId, location, department);
             return File(bytes,
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         $"TimeEntries_{weekStart:yyyyMMdd}.xlsx");

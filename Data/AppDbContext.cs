@@ -10,6 +10,7 @@ namespace Data
 
         public DbSet<TimesheetEntry> TimesheetEntries => Set<TimesheetEntry>();
 
+        public DbSet<Employee> Employees => Set<Employee>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,13 @@ namespace Data
                     t => t.ToTimeSpan(),
                     t => TimeOnly.FromTimeSpan(t));
 
+
+            modelBuilder.Entity<TimesheetEntry>()
+                .HasIndex(e => e.Date);
+            modelBuilder.Entity<TimesheetEntry>()
+                .HasOne(e => e.Employee)
+                .WithMany(e => e.TimesheetEntries)
+                .HasForeignKey(e => e.EmployeeId);
 
             modelBuilder.Entity<TimesheetEntry>()
                 .HasIndex(e => e.Date);
