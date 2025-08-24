@@ -94,20 +94,33 @@ namespace WebApi.Controllers
             return NoContent();
         }
 
-        // GET: api/timeentries/export/2025-08-18?name=Johnson%20Obioma&employeeId=81235493&location=CALGARY%20-%201410%20COST%3A270%20GL%3A13000&department=MERCH
-        [HttpGet("export/{weekStart}")]
-        public async Task<IActionResult> ExportToExcel(DateOnly weekStart, [FromQuery] string name, [FromQuery] string employeeId, [FromQuery] string location, [FromQuery] string department)
+        // GET: GET api/timeentries/export/current-week?name=Johnson%20Obioma&employeeId=81235493&location=CALGARY&department=MERCH
+        [HttpGet("export/current-week")]
+        public async Task<IActionResult> ExportCurrentWeek([FromQuery] string name, [FromQuery] string employeeId, [FromQuery] string location, [FromQuery] string department)
         {
-            var weekEnd = weekStart.AddDays(7);
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var sunday = GetSundayOfWeek(today);
+            var saturday = sunday.AddDays(6);
+
             var entries = await _context.TimesheetEntries
-                                        .Where(e => e.Date >= weekStart && e.Date < weekEnd)
+                                        .Where(e => e.Date >= sunday && e.Date <= saturday)
                                         .OrderBy(e => e.Date)
                                         .ToListAsync();
 
-            var bytes = _excelService.Generate(entries, weekStart, name, employeeId, location, department);
+            if (!entries.Any())
+            {
+                return BadRequest($"No entries found for week {sunday:yyyy-MM-dd}");
+            }
+
+            var bytes = _excelService.Generate(entries, name, employeeId, location, department);
             return File(bytes,
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        $"TimeEntries_{weekStart:yyyyMMdd}.xlsx");
+                        $"TimeEntries_Week_{sunday:yyyyMMdd}.xlsx");
+        }
+        private DateOnly GetSundayOfWeek(DateOnly date)
+        {
+            var daysSinceSunday = (int)date.DayOfWeek;
+            return date.AddDays(-daysSinceSunday);
         }
     }
 }
