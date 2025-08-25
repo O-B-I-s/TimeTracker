@@ -10,7 +10,7 @@
 
         public int? OdometerStart { get; set; }
         public int? OdometerEnd { get; set; }
-        public int EmployeeId { get; set; }
+        public int? EmployeeId { get; set; }
         public Employee? Employee { get; set; } // Navigation property
 
         public double HoursWorked => Math.Max(0,
