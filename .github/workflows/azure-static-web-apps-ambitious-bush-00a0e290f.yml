@@ -23,6 +23,7 @@ jobs:
           submodules: true
           lfs: false
 
+      # The following OIDC steps are for federated authentication with Azure.
       - name: Install OIDC Client from Core Package
         run: npm install @actions/core@1.6.0 @actions/http-client
 
@@ -35,12 +36,26 @@ jobs:
                return await coredemo.getIDToken()
            result-encoding: string
 
-      #Rename step
-      - name: Rename index.csr.html to index.html
+      # --- Custom Build Steps ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18' 
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./Client/timesheet-frontend # Set working directory for npm commands
+
+      - name: Build Angular App
+        run: npm run build
+        working-directory: ./Client/timesheet-frontend # Set working directory for npm commands
+      # --- End of Custom Build Steps ---
+
+      # Rename the output file *after* the build is complete
+      - name: Rename index.csr.html to index.html for Static Web Apps
         run: |
           if [ -f Client/timesheet-frontend/dist/timesheet-frontend/browser/index.csr.html ]; then
-            mv Client/timesheet-frontend/dist/timesheet-frontend/browser/index.csr.html \
-               Client/timesheet-frontend/dist/timesheet-frontend/browser/index.html
+            mv Client/timesheet-frontend/dist/timesheet-frontend/browser/index.csr.html Client/timesheet-frontend/dist/timesheet-frontend/browser/index.html
           fi
 
       - name: Build And Deploy
@@ -54,6 +69,7 @@ jobs:
           api_location: "" # Api source code path - optional
           output_location: "dist/timesheet-frontend/browser" # Browser output path
           github_id_token: ${{ steps.idtoken.outputs.result }}
+          skip_app_build: true
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
