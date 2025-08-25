@@ -27,7 +27,7 @@ jobs:
         run: dotnet build --configuration Release
 
       - name: dotnet publish WebAPI project
-        run: dotnet publish ./WebApi/WebApi.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish WebApi/WebApi.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -53,3 +53,4 @@ jobs:
           slot-name: 'Production'
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E05A03164776424F82D262F7405383F7 }}
+
