@@ -11,7 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+options.UseAzureSql(builder.Configuration.GetConnectionString("Prod")));
 builder.Services.AddScoped<ExcelExporter>();
 builder.Services.AddCors(options =>
 {
