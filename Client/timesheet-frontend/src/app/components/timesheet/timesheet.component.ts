@@ -62,6 +62,7 @@ export class TimesheetComponent implements OnInit {
       error: (err) => {
         this.error = 'Failed to load entries';
         this.loading = false;
+        console.log(err);
       },
     });
   }
