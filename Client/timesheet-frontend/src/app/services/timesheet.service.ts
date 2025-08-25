@@ -7,7 +7,8 @@ import { TimesheetEntry, ExportParams } from '../models/timesheet.model';
   providedIn: 'root',
 })
 export class TimesheetService {
-  private apiUrl = 'https://localhost:7114/api/TimeEntries';
+  private apiUrl =
+    'https://timesheetpep-dnhhdhh6cbfaexf7.canadacentral-01.azurewebsites.net/api/TimeEntries';
 
   constructor(private http: HttpClient) {}
 
